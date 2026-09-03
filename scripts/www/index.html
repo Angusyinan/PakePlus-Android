@@ -1,488 +1,926 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
+<html lang="zh-CN"><head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>血糖小管家</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    
+    <!-- Tailwind CSS v3 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- 统一的 Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#60a5fa',
+                        accent: '#f43f5e',
+                        warning: '#f59e0b',
+                        success: '#10b981',
+                        neutral: '#6b7280',
+                        'neutral-light': '#f3f4f6',
+                        'neutral-dark': '#374151'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-up': 'slideUp 0.5s ease-in-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                    },
+                }
+            }
         }
-        body {
-            background: #fef6ed;
-            min-height: 100vh;
-        }
-        .header {
-            background: linear-gradient(135deg, #ff9500 0%, #ff6b35 100%);
-            color: white;
-            padding: 20px;
-            text-align: left;
-        }
-        .header h1 {
-            font-size: 32px;
-            font-weight: bold;
-            margin-bottom: 8px;
-        }
-        .header .date {
-            font-size: 16px;
-            opacity: 0.9;
-        }
-        .ai-badge {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(255,255,255,0.2);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .container {
-            padding: 20px;
-        }
-        .today-card {
-            background: white;
-            border-radius: 20px;
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-        .today-title {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .today-title h2 {
-            font-size: 24px;
-            color: #333;
-        }
-        .today-count {
-            background: #ffe8cc;
-            color: #ff7a00;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 20px;
-            font-weight: bold;
-        }
-        .time-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-        .time-item {
-            background: #f8f9fa;
-            border-radius: 16px;
-            padding: 20px;
-            text-align: center;
-            border: 2px solid transparent;
-        }
-        .time-item.active {
-            background: #eaf4ff;
-            border-color: #007aff;
-        }
-        .time-item .period {
-            font-size: 28px;
-            font-weight: bold;
-            color: #007aff;
-            margin-bottom: 8px;
-        }
-        .time-item .value {
-            font-size: 40px;
-            font-weight: bold;
-            color: #007aff;
-            margin-bottom: 8px;
-        }
-        .time-item .unit {
-            font-size: 20px;
-            color: #007aff;
-        }
-        .time-item .time {
-            font-size: 16px;
-            color: #666;
-        }
-        .time-item .unmeasured {
-            font-size: 24px;
-            color: #999;
-        }
-        .add-btn {
-            width: 100%;
-            padding: 20px;
-            background: linear-gradient(90deg, #ff7a00 0%, #ff3b30 100%);
-            color: white;
-            border: none;
-            border-radius: 16px;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-        }
-        .trend-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 8px;
-            margin-bottom: 20px;
-        }
-        .trend-text {
-            font-size: 24px;
-            font-weight: 600;
-            color: #333;
-        }
-        .chart-link {
-            color: #ff7a00;
-            font-size: 20px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: white;
-            display: flex;
-            justify-content: space-around;
-            padding: 12px 0;
-            border-top: 1px solid #eee;
-        }
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            color: #999;
-            font-size: 14px;
-        }
-        .nav-item.active {
-            color: #ff7a00;
-        }
-        .input-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            justify-content: center;
-            align-items: center;
-            z-index: 999;
-        }
-        .input-box {
-            background: white;
-            padding: 24px;
-            border-radius: 16px;
-            width: 90%;
-            max-width: 400px;
-        }
-        .input-box h3 {
-            font-size: 20px;
-            margin-bottom: 16px;
-            text-align: center;
-        }
-        .input-box input {
-            width: 100%;
-            padding: 16px;
-            border: 1px solid #ddd;
-            border-radius: 12px;
-            font-size: 18px;
-            margin-bottom: 16px;
-            outline: none;
-        }
-        .input-box .period-select {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-        }
-        .period-btn {
-            flex: 1;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            background: #f8f9fa;
-            font-size: 16px;
-        }
-        .period-btn.active {
-            background: #007aff;
-            color: white;
-            border-color: #007aff;
-        }
-        .save-btn {
-            width: 100%;
-            padding: 16px;
-            background: #ff7a00;
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: bold;
-        }
-        .record-list {
-            margin-bottom: 80px;
-        }
-        .record-item {
-            background: white;
-            padding: 16px;
-            border-radius: 12px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .record-info .value {
-            font-size: 18px;
-            font-weight: bold;
-            color: #333;
-        }
-        .record-info .time {
-            font-size: 14px;
-            color: #888;
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .card-shadow {
+                @apply shadow-lg shadow-primary/10;
+            }
+            .btn-primary {
+                @apply bg-primary hover:bg-primary/90 text-white font-medium py-3 px-6 rounded-lg transition-all duration-300 flex items-center justify-center gap-2;
+            }
+            .btn-secondary {
+                @apply bg-white border border-primary text-primary hover:bg-primary/5 font-medium py-3 px-6 rounded-lg transition-all duration-300 flex items-center justify-center gap-2;
+            }
+            .input-field {
+                @apply w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-300;
+            }
+            .card {
+                @apply bg-white rounded-xl p-6 card-shadow;
+            }
+            .badge {
+                @apply px-2 py-1 text-xs font-medium rounded-full;
+            }
+            .badge-warning {
+                @apply bg-warning/10 text-warning;
+            }
+            .badge-success {
+                @apply bg-success/10 text-success;
+            }
+            .badge-accent {
+                @apply bg-accent/10 text-accent;
+            }
+            .nav-btn {
+                @apply text-neutral transition-colors duration-300;
+            }
+            .nav-btn.active {
+                @apply text-primary;
+            }
+            .calendar-day.selected {
+                @apply bg-primary text-white !important;
+            }
         }
     </style>
 </head>
-<body>
-    <div class="header">
-        <h1>血糖小管家</h1>
-        <div class="date" id="currentDate"></div>
-        <div class="ai-badge">✨ AI分析</div>
+<body class="bg-gray-50 min-h-screen pb-20">
+    <!-- 页面内容容器 -->
+    <div id="page-container" class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- 头部 -->
+        <header class="mb-8 animate-fade-in">
+            <div class="flex justify-center items-center">
+                <div class="text-center">
+                    <h1 class="text-3xl font-bold text-neutral-dark">血糖小管家</h1>
+                    <p class="text-neutral mt-1" id="current-date">2026年4月10日星期五</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- 今日记录卡片 -->
+        <section class="card mb-8 animate-slide-up" style="animation-delay: 0.1s;">
+            <h2 class="text-xl font-bold text-neutral-dark mb-4">今日记录</h2>
+            <div class="flex items-center gap-2 mb-6">
+                <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                    <span id="today-count">0</span>/<span>4</span>
+                </div>
+                <div>
+                    <p class="text-neutral-dark font-medium">已完成 <span id="today-percentage">0%</span></p>
+                    <p class="text-neutral text-sm">今日目标：记录4次血糖值</p>
+                </div>
+            </div>
+            
+            <!-- 今日记录列表 -->
+            <div class="space-y-4" id="today-records">
+                <!-- 空腹 -->
+                <div class="record-item bg-neutral-light rounded-lg p-4 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-medium">空腹</h3>
+                        <p class="text-neutral text-sm">早晨起床后</p>
+                    </div>
+                    <button class="record-btn badge badge-warning" data-type="空腹">未测</button>
+                </div>
+                
+                <!-- 早餐后 -->
+                <div class="record-item bg-neutral-light rounded-lg p-4 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-medium">早餐后</h3>
+                        <p class="text-neutral text-sm">早餐后2小时</p>
+                    </div>
+                    <button class="record-btn badge badge-warning" data-type="早餐后">未测</button>
+                </div>
+                
+                <!-- 午餐后 -->
+                <div class="record-item bg-neutral-light rounded-lg p-4 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-medium">午餐后</h3>
+                        <p class="text-neutral text-sm">午餐后2小时</p>
+                    </div>
+                    <button class="record-btn badge badge-warning" data-type="午餐后">未测</button>
+                </div>
+                
+                <!-- 晚餐后 -->
+                <div class="record-item bg-neutral-light rounded-lg p-4 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-medium">晚餐后</h3>
+                        <p class="text-neutral text-sm">晚餐后2小时</p>
+                    </div>
+                    <button class="record-btn badge badge-warning" data-type="晚餐后">未测</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 记一笔血糖 -->
+        <section class="card mb-8 animate-slide-up" style="animation-delay: 0.2s;">
+            <h2 class="text-xl font-bold text-neutral-dark mb-4">记一笔血糖</h2>
+            <form id="record-form" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-neutral-dark mb-2 font-medium">测量时间</label>
+                        <select id="record-time" class="input-field">
+                            <option value="空腹">空腹</option>
+                            <option value="早餐后">早餐后</option>
+                            <option value="午餐后">午餐后</option>
+                            <option value="晚餐后">晚餐后</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-neutral-dark mb-2 font-medium">血糖值 (mmol/L)</label>
+                        <input type="number" id="blood-sugar" step="0.1" min="1" max="30" class="input-field" placeholder="请输入血糖值">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-neutral-dark mb-2 font-medium">备注</label>
+                    <input type="text" id="record-note" class="input-field" placeholder="可选，添加备注信息">
+                </div>
+                <button type="submit" class="btn-primary w-full">
+                    <i class="fa fa-plus-circle"></i>
+                    <span>添加记录</span>
+                </button>
+            </form>
+        </section>
+
+        <!-- 历史记录列表 -->
+        <section class="card animate-slide-up" style="animation-delay: 0.5s;">
+            <h2 class="text-xl font-bold text-neutral-dark mb-4">历史记录</h2>
+            <div class="space-y-4" id="history-records">
+                <!-- 历史记录将通过JavaScript动态生成 -->
+                <p class="text-center text-neutral py-8">暂无历史记录</p>
+            </div>
+        </section>
     </div>
 
-    <div class="container">
-        <div class="today-card">
-            <div class="today-title">
-                <h2>今日记录</h2>
-                <div class="today-count" id="todayCount">0/4</div>
+    <!-- 记录血糖的模态框 -->
+    <div id="record-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4 animate-fade-in">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-neutral-dark">记录血糖</h3>
+                <button id="close-modal" class="p-2 hover:bg-neutral-light rounded-full transition-colors">
+                    <i class="fa fa-times text-neutral"></i>
+                </button>
             </div>
-            <div class="time-grid">
-                <div class="time-item" data-period="空腹">
-                    <div class="period">空腹</div>
-                    <div class="unmeasured">未测</div>
+            <form id="modal-form" class="space-y-4">
+                <input type="hidden" id="modal-type" value="">
+                <div>
+                    <label class="block text-neutral-dark mb-2 font-medium">测量时间</label>
+                    <input type="text" id="modal-type-display" class="input-field" readonly="">
                 </div>
-                <div class="time-item" data-period="早餐后">
-                    <div class="period">早餐后</div>
-                    <div class="unmeasured">未测</div>
+                <div>
+                    <label class="block text-neutral-dark mb-2 font-medium">血糖值 (mmol/L)</label>
+                    <input type="number" id="modal-value" step="0.1" min="1" max="30" class="input-field" placeholder="请输入血糖值">
                 </div>
-                <div class="time-item" data-period="午餐后">
-                    <div class="period">午餐后</div>
-                    <div class="unmeasured">未测</div>
+                <div>
+                    <label class="block text-neutral-dark mb-2 font-medium">备注</label>
+                    <input type="text" id="modal-note" class="input-field" placeholder="可选，添加备注信息">
                 </div>
-                <div class="time-item" data-period="晚餐后">
-                    <div class="period">晚餐后</div>
-                    <div class="unmeasured">未测</div>
-                </div>
-            </div>
-        </div>
-
-        <button class="add-btn" id="addBtn">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            记一笔血糖
-        </button>
-
-        <div class="trend-row">
-            <div class="trend-text">历史趋势</div>
-            <div class="chart-link" id="chartBtn">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="3" y1="12" x2="21" y2="12"></line>
-                    <polyline points="9 6 12 3 15 6"></polyline>
-                    <polyline points="9 18 12 21 15 18"></polyline>
-                </svg>
-                图表
-            </div>
-        </div>
-
-        <div class="record-list" id="recordList"></div>
-    </div>
-
-    <div class="bottom-nav">
-        <div class="nav-item active" id="navHome">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                <polyline points="9 22 9 12 15 12 15 22"></polyline>
-            </svg>
-            <span>首页</span>
-        </div>
-        <div class="nav-item" id="navHistory">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-            <span>历史</span>
-        </div>
-        <div class="nav-item" id="navSettings">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
-            <span>设置</span>
+                <button type="submit" class="btn-primary w-full">
+                    <i class="fa fa-check-circle"></i>
+                    <span>确认记录</span>
+                </button>
+            </form>
         </div>
     </div>
 
-    <div class="input-modal" id="inputModal">
-        <div class="input-box">
-            <h3>记录血糖</h3>
-            <div class="period-select">
-                <button class="period-btn active" data-period="空腹">空腹</button>
-                <button class="period-btn" data-period="早餐后">早餐后</button>
-                <button class="period-btn" data-period="午餐后">午餐后</button>
-                <button class="period-btn" data-period="晚餐后">晚餐后</button>
+    <!-- 设置页面 -->
+    <section id="settings-page" class="hidden">
+        <header class="mb-8 animate-fade-in">
+            <div class="text-center">
+                <h1 class="text-3xl font-bold text-neutral-dark">设置</h1>
+                <p class="text-neutral mt-1">血糖小管家设置</p>
             </div>
-            <input type="number" id="sugarInput" placeholder="输入血糖值（mmol/L）" step="0.1">
-            <button class="save-btn" id="saveBtn">保存</button>
+        </header>
+
+        <!-- 设置内容 -->
+        <div class="card mb-8 animate-slide-up" style="animation-delay: 0.1s;">
+            <div class="space-y-6">
+                <div>
+                    <h2 class="text-xl font-bold text-neutral-dark mb-4">正常血糖范围 (mmol/L)</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-sm text-neutral mb-1 block">空腹下限</label>
+                            <input type="number" id="空腹_min" step="0.1" min="1" max="10" class="input-field">
+                        </div>
+                        <div>
+                            <label class="text-sm text-neutral mb-1 block">空腹上限</label>
+                            <input type="number" id="空腹_max" step="0.1" min="1" max="10" class="input-field">
+                        </div>
+                        <div>
+                            <label class="text-sm text-neutral mb-1 block">餐后下限</label>
+                            <input type="number" id="餐后_min" step="0.1" min="1" max="15" class="input-field">
+                        </div>
+                        <div>
+                            <label class="text-sm text-neutral mb-1 block">餐后上限</label>
+                            <input type="number" id="餐后_max" step="0.1" min="1" max="15" class="input-field">
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-neutral-dark mb-4">提醒设置</h2>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span>空腹提醒</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="空腹_reminder" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span>早餐后提醒</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="早餐后_reminder" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span>午餐后提醒</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="午餐后_reminder" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span>晚餐后提醒</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="晚餐后_reminder" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <button id="save-settings" class="btn-primary w-full">
+                    <i class="fa fa-save"></i>
+                    <span>保存设置</span>
+                </button>
+            </div>
         </div>
+    </section>
+
+    <!-- 结果提示 -->
+    <div id="toast" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-neutral-dark text-white px-6 py-3 rounded-lg shadow-lg z-50 hidden animate-fade-in">
+        <span id="toast-message"></span>
     </div>
 
     <script>
-        // 显示当前日期
-        const now = new Date();
-        const dateStr = now.getFullYear() + '年' + (now.getMonth()+1) + '月' + now.getDate() + '日' + '星期' + ['日','一','二','三','四','五','六'][now.getDay()];
-        document.getElementById('currentDate').textContent = dateStr;
+        // 血糖记录数据
+        let bloodSugarRecords = JSON.parse(localStorage.getItem('bloodSugarRecords')) || [];
+        
+        // 血糖正常范围设置
+        let bloodSugarRanges = JSON.parse(localStorage.getItem('bloodSugarRanges')) || {
+            '空腹': { min: 3.9, max: 6.1 },
+            '早餐后': { min: 3.9, max: 7.8 },
+            '午餐后': { min: 3.9, max: 7.8 },
+            '晚餐后': { min: 3.9, max: 7.8 }
+        };
+        
+        // 提醒设置
+        let reminderSettings = JSON.parse(localStorage.getItem('reminderSettings')) || {
+            '空腹': false,
+            '早餐后': false,
+            '午餐后': false,
+            '晚餐后': false
+        };
 
-        // 元素获取
-        const addBtn = document.getElementById('addBtn');
-        const inputModal = document.getElementById('inputModal');
-        const sugarInput = document.getElementById('sugarInput');
-        const saveBtn = document.getElementById('saveBtn');
-        const recordList = document.getElementById('recordList');
-        const todayCount = document.getElementById('todayCount');
-        const periodBtns = document.querySelectorAll('.period-btn');
-        const timeItems = document.querySelectorAll('.time-item');
 
-        let selectedPeriod = '空腹';
-
-        // 切换时段
-        periodBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                periodBtns.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                selectedPeriod = btn.dataset.period;
+        const currentDate = new Date();
+        const dateOptions = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+        document.getElementById('current-date').textContent = currentDate.toLocaleDateString('zh-CN', dateOptions);
+        
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', function() {
+            // 加载今日记录
+            updateTodayRecords();
+            
+            // 加载历史记录
+            updateHistoryRecords();
+            
+            // 加载设置
+            loadSettings();
+            
+            // 初始化导航
+            initNavigation();
+            
+            // 设置表单提交事件
+            document.getElementById('record-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                addRecord();
+            });
+            
+            // 设置模态框表单提交事件
+            document.getElementById('modal-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveModalRecord();
+            });
+            
+            // 设置记录按钮点击事件
+            document.querySelectorAll('.record-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const type = this.getAttribute('data-type');
+                    openRecordModal(type);
+                });
+            });
+            
+            // 设置关闭模态框按钮点击事件
+            document.getElementById('close-modal').addEventListener('click', function() {
+                document.getElementById('record-modal').classList.add('hidden');
+            });
+            
+            // 设置保存设置按钮点击事件
+            document.getElementById('save-settings').addEventListener('click', function() {
+                saveSettings();
             });
         });
-
-        // 打开输入框
-        addBtn.addEventListener('click', () => {
-            inputModal.style.display = 'flex';
-            sugarInput.focus();
-        });
-
-        // 点击遮罩关闭
-        inputModal.addEventListener('click', (e) => {
-            if(e.target === inputModal) {
-                inputModal.style.display = 'none';
-            }
-        });
-
-        // 保存记录
-        saveBtn.addEventListener('click', () => {
-            const val = sugarInput.value.trim();
-            if(!val || isNaN(val)) {
-                alert('请输入有效的血糖值');
-                return;
-            }
-            const record = {
-                period: selectedPeriod,
-                value: val,
-                time: new Date().toLocaleString()
-            };
-            const list = JSON.parse(localStorage.getItem('sugarRecords') || '[]');
-            list.unshift(record);
-            localStorage.setItem('sugarRecords', JSON.stringify(list));
-            sugarInput.value = '';
-            inputModal.style.display = 'none';
-            renderToday();
-            renderList();
-            updateTodayCount();
-        });
-
-        // 渲染今日记录
-        function renderToday() {
-            const list = JSON.parse(localStorage.getItem('sugarRecords') || '[]');
-            const today = new Date().toDateString();
-            const todayRecords = list.filter(item => new Date(item.time).toDateString() === today);
+        
+        // 更新今日记录
+        function updateTodayRecords() {
+            const today = getLocalDateString(new Date());
+            const todayRecords = bloodSugarRecords.filter(r => r.date === today);
             
-            timeItems.forEach(item => {
-                const period = item.dataset.period;
-                const record = todayRecords.find(r => r.period === period);
-                if(record) {
-                    item.classList.add('active');
-                    item.innerHTML = `
-                        <div class="period">${period}</div>
-                        <div class="value">${record.value}<span class="unit"> mmol/L</span></div>
-                        <div class="time">${new Date(record.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
-                    `;
-                } else {
-                    item.classList.remove('active');
-                    item.innerHTML = `
-                        <div class="period">${period}</div>
-                        <div class="unmeasured">未测</div>
-                    `;
+            // 更新今日记录数量
+            document.getElementById('today-count').textContent = todayRecords.length;
+            document.getElementById('today-percentage').textContent = Math.round((todayRecords.length / 4) * 100) + '%';
+            
+            // 更新今日记录列表
+            document.querySelectorAll('.record-item').forEach(item => {
+                const type = item.querySelector('.record-btn').getAttribute('data-type');
+                const record = todayRecords.find(r => r.type === type);
+                
+                if (record) {
+                    const btn = item.querySelector('.record-btn');
+                    btn.textContent = record.value + ' mmol/L';
+                    btn.classList.remove('badge-warning');
+                    
+                    // 根据血糖值设置标签样式
+                    if (isNormal(record.type, record.value)) {
+                        btn.classList.add('badge-success');
+                    } else {
+                        btn.classList.add('badge-accent');
+                    }
                 }
             });
         }
-
-        // 渲染记录列表
-        function renderList() {
-            const list = JSON.parse(localStorage.getItem('sugarRecords') || '[]');
-            if(list.length === 0) {
-                recordList.innerHTML = '<div style="text-align:center;color:#999;padding:20px;">暂无记录</div>';
+        
+        // 更新历史记录
+        function updateHistoryRecords() {
+            const historyContainer = document.getElementById('history-records');
+            
+            // 如果没有记录，显示提示
+            if (bloodSugarRecords.length === 0) {
+                historyContainer.innerHTML = '<p class="text-center text-neutral py-8">暂无历史记录</p>';
                 return;
             }
-            let html = '';
-            list.forEach(item => {
-                html += `
-                <div class="record-item">
-                    <div class="record-info">
-                        <div class="value">${item.period}：${item.value} mmol/L</div>
-                        <div class="time">${item.time}</div>
+            
+            // 按日期排序，最新的在前
+            const sortedRecords = [...bloodSugarRecords].sort((a, b) => {
+                if (a.date !== b.date) {
+                    return b.date.localeCompare(a.date);
+                }
+                const typeOrder = { '空腹': 0, '早餐后': 1, '午餐后': 2, '晚餐后': 3 };
+                return typeOrder[a.type] - typeOrder[b.type];
+            });
+            
+            // 按日期分组
+            const groupedRecords = {};
+            sortedRecords.forEach(record => {
+                if (!groupedRecords[record.date]) {
+                    groupedRecords[record.date] = [];
+                }
+                groupedRecords[record.date].push(record);
+            });
+            
+            // 生成历史记录HTML
+            let historyHTML = '';
+            Object.keys(groupedRecords).forEach(date => {
+                const dateObj = new Date(date);
+                const dateStr = dateObj.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' });
+                
+                historyHTML += `
+                    <div class="bg-neutral-light rounded-lg overflow-hidden">
+                        <div class="p-4 border-b border-gray-200">
+                            <h3 class="font-medium">${dateStr}</h3>
+                        </div>
+                        <div class="divide-y divide-gray-200">
+                `;
+                
+                groupedRecords[date].forEach(record => {
+                    const isNormalValue = isNormal(record.type, record.value);
+                    const badgeClass = isNormalValue ? 'badge-success' : 'badge-accent';
+                    
+                    historyHTML += `
+                        <div class="p-4 flex justify-between items-center">
+                            <div>
+                                <h4 class="font-medium">${record.type}</h4>
+                                ${record.note ? `<p class="text-neutral text-sm">${record.note}</p>` : ''}
+                            </div>
+                            <span class="badge ${badgeClass}">${record.value} mmol/L</span>
+                        </div>
+                    `;
+                });
+                
+                historyHTML += `
+                        </div>
                     </div>
-                </div>
                 `;
             });
-            recordList.innerHTML = html;
+            
+            historyContainer.innerHTML = historyHTML;
         }
-
-        // 更新今日计数
-        function updateTodayCount() {
-            const list = JSON.parse(localStorage.getItem('sugarRecords') || '[]');
-            const today = new Date().toDateString();
-            const todayRecords = list.filter(item => new Date(item.time).toDateString() === today);
-            todayCount.textContent = `${todayRecords.length}/4`;
+        
+        // 获取本地日期字符串（YYYY-MM-DD）
+        function getLocalDateString(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
         }
+        
+        // 添加记录
+        function addRecord() {
+            const type = document.getElementById('record-time').value;
+            const value = parseFloat(document.getElementById('blood-sugar').value);
+            const note = document.getElementById('record-note').value.trim();
+            
+            // 验证输入
+            if (!value) {
+                showToast('请输入血糖值');
+                return;
+            }
+            
+            // 创建记录对象
+            const today = getLocalDateString(new Date());
+            const record = {
+                id: Date.now().toString(),
+                date: today,
+                type: type,
+                value: value,
+                note: note,
+                timestamp: new Date().toISOString()
+            };
+            
+            // 检查是否已存在同类型记录
+            const existingIndex = bloodSugarRecords.findIndex(r => r.date === today && r.type === type);
+            if (existingIndex !== -1) {
+                // 更新现有记录
+                bloodSugarRecords[existingIndex] = record;
+                showToast('记录已更新');
+            } else {
+                // 添加新记录
+                bloodSugarRecords.push(record);
+                showToast('记录已添加');
+            }
+            
+            // 保存到本地存储
+            localStorage.setItem('bloodSugarRecords', JSON.stringify(bloodSugarRecords));
+            
+            // 重置表单
+            document.getElementById('record-form').reset();
+            
+            // 更新页面
+            updateTodayRecords();
+            updateHistoryRecords();
 
-        // 图表按钮
-        document.getElementById('chartBtn').addEventListener('click', () => {
-            alert('图表功能即将上线，敬请期待~');
-        });
+        }
+        
+        // 打开记录模态框
+        function openRecordModal(type) {
+            document.getElementById('modal-type').value = type;
+            document.getElementById('modal-type-display').value = type;
+            
+            // 检查是否已有记录
+            const today = getLocalDateString(new Date());
+            const existingRecord = bloodSugarRecords.find(r => r.date === today && r.type === type);
+            
+            if (existingRecord) {
+                document.getElementById('modal-value').value = existingRecord.value;
+                document.getElementById('modal-note').value = existingRecord.note || '';
+            } else {
+                document.getElementById('modal-value').value = '';
+                document.getElementById('modal-note').value = '';
+            }
+            
+            // 显示模态框
+            document.getElementById('record-modal').classList.remove('hidden');
+        }
+        
+        // 保存模态框记录
+        function saveModalRecord() {
+            const type = document.getElementById('modal-type').value;
+            const value = parseFloat(document.getElementById('modal-value').value);
+            const note = document.getElementById('modal-note').value.trim();
+            
+            // 验证输入
+            if (!value) {
+                showToast('请输入血糖值');
+                return;
+            }
+            
+            // 创建记录对象
+            const today = getLocalDateString(new Date());
+            const record = {
+                id: Date.now().toString(),
+                date: today,
+                type: type,
+                value: value,
+                note: note,
+                timestamp: new Date().toISOString()
+            };
+            
+            // 检查是否已存在同类型记录
+            const existingIndex = bloodSugarRecords.findIndex(r => r.date === today && r.type === type);
+            if (existingIndex !== -1) {
+                // 更新现有记录
+                bloodSugarRecords[existingIndex] = record;
+                showToast('记录已更新');
+            } else {
+                // 添加新记录
+                bloodSugarRecords.push(record);
+                showToast('记录已添加');
+            }
+            
+            // 保存到本地存储
+            localStorage.setItem('bloodSugarRecords', JSON.stringify(bloodSugarRecords));
+            
+            // 关闭模态框
+            document.getElementById('record-modal').classList.add('hidden');
+            
+            // 更新页面
+            updateTodayRecords();
+            updateHistoryRecords();
 
-        // 底部导航
-        document.getElementById('navHistory').addEventListener('click', () => {
-            alert('历史页面即将上线，敬请期待~');
-        });
-        document.getElementById('navSettings').addEventListener('click', () => {
-            alert('设置页面即将上线，敬请期待~');
-        });
-
-        // 页面加载时渲染
-        window.onload = () => {
-            renderToday();
-            renderList();
-            updateTodayCount();
-        };
+        }
+        
+        // 加载设置
+        function loadSettings() {
+            // 加载血糖范围设置
+            document.getElementById('空腹_min').value = bloodSugarRanges['空腹'].min;
+            document.getElementById('空腹_max').value = bloodSugarRanges['空腹'].max;
+            document.getElementById('餐后_min').value = bloodSugarRanges['早餐后'].min;
+            document.getElementById('餐后_max').value = bloodSugarRanges['早餐后'].max;
+            
+            // 加载提醒设置
+            document.getElementById('空腹_reminder').checked = reminderSettings['空腹'];
+            document.getElementById('早餐后_reminder').checked = reminderSettings['早餐后'];
+            document.getElementById('午餐后_reminder').checked = reminderSettings['午餐后'];
+            document.getElementById('晚餐后_reminder').checked = reminderSettings['晚餐后'];
+        }
+        
+        // 保存设置
+        function saveSettings() {
+            // 保存血糖范围设置
+            bloodSugarRanges = {
+                '空腹': {
+                    min: parseFloat(document.getElementById('空腹_min').value),
+                    max: parseFloat(document.getElementById('空腹_max').value)
+                },
+                '早餐后': {
+                    min: parseFloat(document.getElementById('餐后_min').value),
+                    max: parseFloat(document.getElementById('餐后_max').value)
+                },
+                '午餐后': {
+                    min: parseFloat(document.getElementById('餐后_min').value),
+                    max: parseFloat(document.getElementById('餐后_max').value)
+                },
+                '晚餐后': {
+                    min: parseFloat(document.getElementById('餐后_min').value),
+                    max: parseFloat(document.getElementById('餐后_max').value)
+                }
+            };
+            
+            // 保存提醒设置
+            reminderSettings = {
+                '空腹': document.getElementById('空腹_reminder').checked,
+                '早餐后': document.getElementById('早餐后_reminder').checked,
+                '午餐后': document.getElementById('午餐后_reminder').checked,
+                '晚餐后': document.getElementById('晚餐后_reminder').checked
+            };
+            
+            // 保存到本地存储
+            localStorage.setItem('bloodSugarRanges', JSON.stringify(bloodSugarRanges));
+            localStorage.setItem('reminderSettings', JSON.stringify(reminderSettings));
+            
+            // 显示提示
+            showToast('设置已保存');
+        }
+        
+        // 判断血糖值是否正常
+        function isNormal(type, value) {
+            const range = bloodSugarRanges[type];
+            return value >= range.min && value <= range.max;
+        }
+        
+        // 显示提示
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = message;
+            
+            toast.classList.remove('hidden');
+            
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
     </script>
-</body>
-</html>
+
+    <!-- 日历页面 -->
+    <section id="calendar-page" class="hidden">
+        <header class="mb-8 animate-fade-in">
+            <div class="relative flex justify-center items-center">
+                <div class="text-center">
+                    <h1 class="text-3xl font-bold text-neutral-dark">血糖日历</h1>
+                    <p class="text-neutral mt-1" id="calendar-date">2026年4月</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- 日历导航 -->
+        <div class="flex justify-between items-center mb-6">
+            <button id="prev-month" class="btn-secondary">
+                <i class="fa fa-chevron-left"></i>
+            </button>
+            <h2 id="current-month" class="text-xl font-bold">2026年4月</h2>
+            <button id="next-month" class="btn-secondary">
+                <i class="fa fa-chevron-right"></i>
+            </button>
+        </div>
+
+        <!-- 日历网格 -->
+        <div class="bg-white rounded-xl p-6 card-shadow mb-8">
+            <div class="grid grid-cols-7 gap-2 mb-4">
+                <div class="text-center font-medium text-neutral">日</div>
+                <div class="text-center font-medium text-neutral">一</div>
+                <div class="text-center font-medium text-neutral">二</div>
+                <div class="text-center font-medium text-neutral">三</div>
+                <div class="text-center font-medium text-neutral">四</div>
+                <div class="text-center font-medium text-neutral">五</div>
+                <div class="text-center font-medium text-neutral">六</div>
+            </div>
+            <div id="calendar-grid" class="grid grid-cols-7 gap-2">
+                <!-- 日历格子将通过JavaScript动态生成 -->
+            </div>
+        </div>
+
+        <!-- 选中日期的血糖记录 -->
+        <div id="selected-date-records" class="card mb-8 hidden">
+            <h2 class="text-xl font-bold text-neutral-dark mb-4" id="selected-date-title">2026年4月10日的记录</h2>
+            <div id="selected-records-container" class="space-y-4">
+                <!-- 记录将通过JavaScript动态生成 -->
+            </div>
+        </div>
+    </section>
+
+    <!-- 底部导航栏 -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40">
+        <div class="flex justify-around">
+            <button class="nav-btn active flex flex-col items-center py-3 px-4" data-page="home">
+                <i class="fa fa-home text-xl"></i>
+                <span class="text-xs mt-1">首页</span>
+            </button>
+            <button class="nav-btn flex flex-col items-center py-3 px-4" data-page="calendar">
+                <i class="fa fa-calendar text-xl"></i>
+                <span class="text-xs mt-1">日历</span>
+            </button>
+            <button class="nav-btn flex flex-col items-center py-3 px-4" data-page="settings">
+                <i class="fa fa-cog text-xl"></i>
+                <span class="text-xs mt-1">设置</span>
+            </button>
+        </div>
+    </nav>
+
+
+
+    <script>
+        // 导航功能
+        function initNavigation() {
+            // 页面元素
+            const homePage = document.querySelectorAll('header, section:not(#calendar-page):not(#settings-page)');
+            const calendarPage = document.getElementById('calendar-page');
+            const settingsPage = document.getElementById('settings-page');
+            const navBtns = document.querySelectorAll('.nav-btn');
+            
+            // 导航到指定页面
+            function navigateTo(page) {
+                // 隐藏所有页面
+                homePage.forEach(el => el.classList.add('hidden'));
+                calendarPage.classList.add('hidden');
+                settingsPage.classList.add('hidden');
+                
+                // 显示目标页面
+                if (page === 'home') {
+                    homePage.forEach(el => el.classList.remove('hidden'));
+                } else if (page === 'calendar') {
+                    calendarPage.classList.remove('hidden');
+                    generateCalendar();
+                } else if (page === 'settings') {
+                    settingsPage.classList.remove('hidden');
+                    loadSettings();
+                }
+                
+                // 更新导航按钮状态
+                navBtns.forEach(btn => {
+                    if (btn.dataset.page === page) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+            }
+            
+            // 导航按钮点击事件
+            navBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    navigateTo(this.dataset.page);
+                });
+            });
+            
+            // 初始化导航
+            navigateTo('home');
+        }
+        
+        // 初始化日历
+        function generateCalendar() {
+            const today = new Date();
+            let currentMonth = today.getMonth();
+            let currentYear = today.getFullYear();
+            
+            // 更新月份显示
+            function updateMonthDisplay() {
+                const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+                document.getElementById('current-month').textContent = currentYear + '年' + monthNames[currentMonth];
+                document.getElementById('calendar-date').textContent = currentYear + '年' + monthNames[currentMonth];
+            }
+            
+            // 生成日历
+            function generateCalendarDays() {
+                const calendarGrid = document.getElementById('calendar-grid');
+                calendarGrid.innerHTML = '';
+                
+                // 当月第一天
+                const firstDay = new Date(currentYear, currentMonth, 1);
+                // 当月最后一天
+                const lastDay = new Date(currentYear, currentMonth + 1, 0);
+                // 当月第一天是星期几 (0-6, 0是星期日)
+                const startDay = firstDay.getDay();
+                // 当月的天数
+                const daysInMonth = lastDay.getDate();
+                
+                // 添加上个月的日期
+                const prevMonthLastDay = new Date(currentYear, currentMonth, 0).getDate();
+                for (let i = startDay - 1; i >= 0; i--) {
+                    const day = prevMonthLastDay - i;
+                    const date = new Date(currentYear, currentMonth - 1, day);
+                    const dateStr = getLocalDateString(date);
+                    const dayElement = document.createElement('div');
+                    dayElement.className = 'aspect-square flex flex-col items-center justify-center p-1 text-neutral/50';
+                    dayElement.innerHTML = `<span>${day}</span>`;
+                    calendarGrid.appendChild(dayElement);
+                }
+                
+                // 添加当月的日期
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const date = new Date(currentYear, currentMonth, day);
+                    const dateStr = getLocalDateString(date);
+                    const dayElement = document.createElement('div');
+                    
+                    // 检查当天是否有血糖记录
+                    const dayRecords = bloodSugarRecords.filter(r => r.date === dateStr);
+                    const hasRecords = dayRecords.length > 0;
+                    
+                    // 设置样式
+                    let dayClass = 'calendar-day aspect-square flex flex-col items-center justify-center p-1 cursor-pointer hover:bg-neutral-light rounded-lg';
+                    
+                    // 生成日期内容
+                    let dayContent = `<div class="flex flex-col items-center justify-center h-full">
+                        <span class="text-sm font-medium">${day}</span>
+                        ${hasRecords ? `<span class="text-xs text-neutral mt-0.5">${dayRecords.length}/4</span>` : '<span class="h-3"></span>'}
+                    </div>`;
+                    
+                    dayElement.className = dayClass;
+                    dayElement.innerHTML = dayContent;
+                    
+                    // 添加点击事件
+                        dayElement.addEventListener('click', function() {
+                            // 移除所有已选中的日期
+                            document.querySelectorAll('.calendar-day').forEach(el => {
+                                el.classList.remove('selected');
+                            });
+                            // 添加选中状态
+                            this.classList.add('selected');
+                            showDateRecords(dateStr);
+                        });
+                    
+                    calendarGrid.appendChild(dayElement);
+                }
+                
+                // 添加下个月的日期
+                const remainingDays = 42 - (startDay + daysInMonth);
+                for (let day = 1; day <= remainingDays; day++) {
+                    const date = new Date(currentYear, currentMonth + 1, day);
+                    const dateStr = getLocalDateString(date);
+                    const dayElement = document.createElement('div');
+                    dayElement.className = 'aspect-square flex flex-col items-center justify-center p-1 text-neutral/50';
+                    dayElement.innerHTML = `<span>${day}</span>`;
+                    calendarGrid.appendChild(dayElement);
+                }
+            }
+            
+            // 显示选中日期的记录
+            function showDateRecords(dateStr) {
+                const dateObj = new Date(dateStr);
+                const dateTitle = dateObj.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+                document.getElementById('selected-date-title').textContent = dateTitle + '的记录';
+                
+                const records = bloodSugarRecords.filter(r => r.date === dateStr);
+                const recordsContainer = document.getElementById('selected-records-container');
+                
+                if (records.length === 0) {
+                    recordsContainer.innerHTML = '<p class="text-center text-neutral py-4">该日暂无记录</p>';
+                } else {
+                    let recordsHTML = '';
+                    records.forEach(record => {
+                        const isNormalValue = isNormal(record.type, record.value);
+                        const badgeClass = isNormalValue ? 'badge-success' : 'badge-accent';
+                        
+                        recordsHTML += `
+                            <div class="bg-neutral-light rounded-lg p-4 flex justify-between items-center">
+                                <div>
+                                    <h3 class="font-medium">${record.type}</h3>
+                                    ${record.note ? `<p class="text-neutral text-sm">${record.note}</p>` : ''}
+                                </div>
+                                <span class="badge ${badgeClass}">${record.value} mmol/L</span>
+                            </div>
+                        `;
+                    });
+                    recordsContainer.innerHTML = recordsHTML;
+                }
+                
+                document.getElementById('selected-date-records').classList.remove('hidden');
+            }
+            
+            // 上一个月
+            document.getElementById('prev-month').addEventListener('click', function() {
+                currentMonth--;
+                if (currentMonth < 0) {
+                    currentMonth = 11;
+                    currentYear--;
+                }
+                updateMonthDisplay();
+                generateCalendarDays();
+            });
+            
+            // 下一个月
+            document.getElementById('next-month').addEventListener('click', function() {
+                currentMonth++;
+                if (currentMonth > 11) {
+                    currentMonth = 0;
+                    currentYear++;
+                }
+                updateMonthDisplay();
+                generateCalendarDays();
+            });
+            
+            // 初始化
+            updateMonthDisplay();
+            generateCalendarDays();
+        }
+    </script>
+
+</body></html>
